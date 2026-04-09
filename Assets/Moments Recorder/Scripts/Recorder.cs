@@ -285,9 +285,42 @@ namespace Moments
 		{
 			m_ReflectionUtils = new ReflectionUtils<Recorder>(this);
 			m_Frames = new Queue<RenderTexture>();
-		m_MainThreadActions = new Queue<Action>();
+			m_MainThreadActions = new Queue<Action>();
+			Init();
+		}
+
+		void OnDestroy()
 		{
 			FlushMemory();
+		}
+
+		void Update()
+		{
+			Action[] actions = null;
+
+			lock (m_MainThreadActionsLock)
+			{
+				if (m_MainThreadActions.Count > 0)
+				{
+					actions = m_MainThreadActions.ToArray();
+					m_MainThreadActions.Clear();
+				}
+			}
+
+			if (actions == null)
+				return;
+
+			foreach (Action action in actions)
+				action();
+		}
+
+		void EnqueueMainThreadAction(Action action)
+		{
+			if (action == null)
+				return;
+
+			lock (m_MainThreadActionsLock)
+				m_MainThreadActions.Enqueue(action);
 		}
 
 		void OnRenderImage(RenderTexture source, RenderTexture destination)
